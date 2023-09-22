@@ -1,0 +1,293 @@
+---
+title: 'Geração de dados da economia'
+subtitle: 'Selic vs IPCA'
+Author: 'Dieggo Henrique'
+Date: '2023-09-21'
+lang: 'pt'
+ html:
+    code-fold: false
+    code-tools: true
+execute:
+  cache: true
+--- 
+
+
+```{python}
+# importação das bibliotecas necessárias
+from bcb import sgs   # Dados do Banco Central
+import pandas as pd   # Manipuladados de Dados em Painel
+import matplotlib.pyplot as plt  # Gráficos e Vizualizações
+import matplotlib as mpl
+import seaborn as sns
+
+# Paramêtros Adicionais
+mpl.rc('font', family = 'Arial') # Alterando a Fonte dos Gráficos
+mpl.style.use('bmh') # Alterando a Forma do Gráfico
+```
+
+```{python}
+# Criação de um dataframe com os dados do IPCA
+ipca = sgs.get({'IPCA': 433}, start='2012-02-01')  # Coletando dados do IPCA mensal
+ipca.index = ipca.index.to_period('M')             # Delimitando o periodo mensal                     
+ipca_12M = ipca.rolling(12)                        # Acumulando o IPCA em 12 Meses
+# Gerando o IPCA móvel de 12 Meses
+ipca_12M = ipca_12M.apply(lambda x: (1 + x/100).prod() - 1).dropna() * 100;ipca_12M  
+```
+
+
+
+```{python}
+# Criação de um dataframe com os dados da Selic 
+selic = sgs.get({'SELIC': 432}, start='2012-02-01')
+# Resample da Selic para mensal
+selic = selic.resample('M').mean()
+selic.index = selic.index.to_period('M')
+selic.head() 
+```
+
+```{python}
+ipca_12M.plot(kind='line', figsize = (20, 10))
+selic.plot(kind='line', figsize = (20, 10))
+
+
+
+# PEC da bondade PEC 15/2022 
+plt.axvline(x='2015-01-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2015-01-01', 12,   # Eixo x, eixo Y,
+    'Dilma 2',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+# Impeachment aprovado
+plt.axvline(x='2015-04-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2015-04-01', 11,   # Eixo x, eixo Y,
+    'Impeachment\n aprovado',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+# Greve dos Caminhoneiros
+plt.axvline(x='2018-05-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2018-05-01', 11,   # Eixo x, eixo Y,
+    'Greve dos\n Caminhoneiros',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")   
+               # Cor da fonte
+# Bolsonaro
+plt.axvline(x='2019-01-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2019-01-01', 12,   # Eixo x, eixo Y,
+    'Bolsonaro',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+               # Cor da fonte
+# Pandemia
+plt.axvline(x='2020-03-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2020-03-01', 11,   # Eixo x, eixo Y,
+    'Pandemia',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+               # Cor da fonte
+# Bolsonaro
+plt.axvline(x='2021-03-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2021-03-01', 12,   # Eixo x, eixo Y,
+    'Início evolução\n da Selic',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+```
+
+```{python}
+# Plotando os gráficos do IPCA e da Selic
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 4), sharex=True)
+ipca_12M.plot(ax=ax1, color='blue', label='IPCA 12 Meses')
+selic.plot(ax=ax2, color='red', label='Selic')
+ax1.legend()
+ax2.legend()
+plt.show()
+```
+
+```{python}
+# Criação de um dataframe com os dados do IPCA e da Selic mantendo o index de ipca
+dataset = pd.merge(ipca_12M, selic, left_index=True, right_index=True, how='left')
+dataset.head()
+```
+
+```{python}
+# Cálculo do ganho real
+dataset['Juros Real'] = ((1 + dataset['SELIC'] / 100) / (1 + dataset['IPCA'] / 100) - 1) * 100
+dataset.tail()
+```
+
+O distanciamento das expectativas de inflação em horizontes mais longos da meta estipulada pelo Comitê Monetário Nacional indica que podemos estar diante do início de um processo de desancoragem. Isto porque uma política monetária
+suficientemente restritiva deveria ser capaz de levar a inflação de volta a meta em condições usuais. O fato de as expectativas estarem acima da meta quase dois anos à frente coloca em xeque a credibilidade do Banco Central no cumprimento de seu mandato, algo que vem sendo alimentado por questionamentos do novo governo sobre a lei que garante a independência do Banco Central e sobre as metas de inflação para os próximos anos, além de uma visão de que as taxas de juros já estariam suficientemente elevadas.
+
+As expectativas são um importante canal de transmissão da política monetária, e afetam a inflação corrente de acordo com o que as pessoas e as empresas esperam sobre a dinâmica de preços no futuro. Intuitivamente, se todos passam a acreditar
+que a inflação amanhã ficará acima da meta, os reajustes começam e há uma inflação mais elevada desde já. Assim, expectativas desancoradas trazem desafios adicionais para a convergência da inflação, já que uma desancoragem alimenta a dinâmica inflacionária corrente.
+
+```{python}
+# Plota o gráfico de barras
+dataset.plot(kind = 'bar', figsize = (15, 10))
+```
+
+
+```{python}
+#| label: fig-ganho-real
+#| fig-cap: "Fonte: BCB-SGS"
+#| 
+# Plotando os gráficos do IPCA e da Selic
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(18, 8), sharex=True)
+ipca_12M.plot(ax=ax1, color='blue', label='IPCA 12 Meses')
+selic.plot(ax=ax2, color='red', label='Selic')
+dataset['Juros Real'].plot(ax=ax3, color='purple', label='Juros Real')
+ax1.legend()
+ax2.legend()
+ax3.legend()
+plt.show()
+```
+
+Na @fig-ganho-real de acordo com as projeções do Banco Central, a inflação de 2024 alcança 3,4% em um cenário no qual a Selic cai para 12,5% em 2023 e para 9,5% em 2024, mas converge para 2,8% em um cenário alternativo no qual a Selic permanece constante (em 13,75%) ao longo de todo o horizonte relevante. Estas projeções reforçam que a taxa Selic deve permanecer em território restritivo por mais tempo, e que a desaceleração da economia não será condição suficiente para a redução dos juros. 
+Em particular, fica difícil ver espaços para corte enquanto as expectativas de inflação estiverem se distanciando da meta em horizontes mais longos. Mantemos nossa projeção de que a Selic permanece em 13,75%, e espaços para cortes devem se
+materializar apenas em 2024, com convergência das expectativas para meta.
+
+```{python}
+# Plotando o gráfico de linhas do dataset
+dataset.plot(kind='line', figsize=(18, 8))
+plt.title('Acumulado 12 meses - Janela Móvel' , size = 14, color='black')
+plt.suptitle('IPCA, Selic e Taxa de Juros Real', fontsize=18, weight='bold')
+
+# PEC da bondade PEC 15/2022 
+plt.axvline(x='2015-01-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2014-06-01', 12,# Eixo x, eixo Y,
+    'Dilma 2',                # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+# Impeachment aprovado
+plt.axvline(x='2015-04-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2015-05-01', 11,   # Eixo x, eixo Y,
+    'Impeachment\n aprovado',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+# Greve dos Caminhoneiros
+plt.axvline(x='2018-05-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2017-01-01', -2.5,   # Eixo x, eixo Y,
+    'Greve dos\n Caminhoneiros',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")   
+               # Cor da fonte
+# Bolsonaro
+plt.axvline(x='2019-01-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2019-02-01', 12,   # Eixo x, eixo Y,
+    'Bolsonaro',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+               # Cor da fonte
+# Pandemia
+plt.axvline(x='2020-03-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2020-04-01', 11,   # Eixo x, eixo Y,
+    'Pandemia',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+               # Cor da fonte
+# Bolsonaro
+plt.axvline(x='2021-03-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2021-04-01', 12,   # Eixo x, eixo Y,
+    'Início evolução\n da Selic',               # Texto que irá aparecer
+    fontsize = 14,            # Tamanho da fonte
+    # weight = 'bold',        # Negrito
+    color = "r")              # Cor da fonte
+# PEC da bondade PEC 15/2022 
+plt.axvline(x='2022-07-12', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2022-08-01', 11,     # Eixo x, eixo Y,
+    'PEC 15/2022',              # Texto que irá aparecer
+    fontsize = 14,              # Tamanho da fonte
+    #weight = 'bold',            # Negrito
+    color = "r")            # Cor da fonte
+# PEC da bondade PEC 15/2022 
+plt.axvline(x='2023-01-01', color='black',
+            label='axvline - full height', 
+            linestyle='dotted')
+# Texto das linhas
+plt.text('2023-02-01', 0,     # Eixo x, eixo Y,
+    'Lula 3',              # Texto que irá aparecer
+    fontsize = 14,              # Tamanho da fonte
+    #weight = 'bold',            # Negrito
+    color = "r")            # Cor da fonte
+# Aumentar o tamanho da fonte dos eixos
+plt.rcParams.update({'font.size': 18})
+plt.xlabel('')
+plt.ylabel('%')
+plt.box(False)
+# plt.yticks([])
+plt.show()
+```
+
+# Expectativas do Banco Central do Brasil (BCB)
+
+
+```{python}
+from bcb import Expectativas
+em = Expectativas()
+em.describe()
+```
+
+```{python}
+ep = em.get_endpoint('ExpectativasMercadoTop5Anuais')
+ep.query().limit(15).collect()
+```
+
+```{python}
+(ep.query()
+        .filter(ep.Indicador == 'IPCA', ep.DataReferencia == 2023)
+        .filter(ep.Data >= '2022-01-01')
+        .filter(ep.tipoCalculo == 'C')
+        .select(ep.Data, ep.Indicador, ep.Media, ep.DataReferencia)
+        .orderby(ep.Data.desc())
+        .limit(50)
+        .collect()).plot(kind='line', figsize=(18, 8))
+```
